@@ -2,19 +2,17 @@ setwd("C:\\Users\\Lukas\\OneDrive\\Uni\\Master\\3_HWS19\\Complex and Social Netw
 
 library("igraph")
 
-graph.fb <- read.graph("C:\\Users\\Lukas\\Desktop\\facebook_combined.txt")
+graph.fb <- read.graph("C:\\Users\\Lukas\\Desktop\\facebook_combined.txt", directed = FALSE)
 graph.tw <- read.graph("C:\\Users\\Lukas\\Desktop\\twitter_combined.txt", format = "ncol", directed = TRUE)
 graph.tw <- simplify(graph.tw)
 graph.ep <- read.graph("C:\\Users\\Lukas\\Desktop\\soc-Epinions1.txt", directed = TRUE)
 
-n <- 100
+n <- 10000
 ba <- barabasi.game(n, 1, directed=FALSE)
 ws <- watts.strogatz.game(1, n, 3, 0.1)
-er <- erdos.renyi.game(n, 0.3)
-tree <- make_tree(n, children=2, mode="undirected")
+er <- erdos.renyi.game(n, 0.05)
 
 #degree.org <- degree(graph)
-#closeness.org <- closeness(graph)
 #betweeness.org <- betweenness(graph)
 #pagerank.org <- page.rank(graph)
 #eigen_centrality(graph)
@@ -31,13 +29,15 @@ plot_with_color <- function(graph, infected, colors = c("white", "red")) {
   plot(graph, vertex.label=NA, vertex.size=10, vertex.color=colors, edge.arrow.mode="-")
 }
 
-plot_history <- function(graph, history) {
+plot_history <- function(graph, history, steps = 10) {
+  len <- length(history)
+  indexes <- seq(1, len, by = floor((len - 1) / steps))
   for(infected in history) {
     plot_with_color(graph, infected)
   }
 }
 
-simulate <- function(graph, vac=integer(0), iter=10, inf=0.01, p_i=0.05, p_h=0.5) {
+simulate <- function(graph, vac=integer(0), iter=20, inf=0.001, p_i=0.005, p_h=0.3) {
   n <- gorder(graph)
   infected <- sample(setdiff(seq(1, n), vac), round(n * inf), replace = FALSE)
   res <- c(length(infected))
@@ -52,10 +52,10 @@ simulate <- function(graph, vac=integer(0), iter=10, inf=0.01, p_i=0.05, p_h=0.5
     }
     new_infected <- unique(as.numeric(neighbours[sample(c(TRUE, FALSE), length(neighbours), prob = c(p_i, 1-p_i), replace = TRUE)]))
     infected <- append(infected[-healed], new_infected)
-    history[[length(history)+1]] <- infected
+    #history[[length(history)+1]] <- infected
     res <- append(res, c(length(infected)))
   }
-  return(history)
+  return(res)
 }
 
 sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE) {
@@ -158,4 +158,10 @@ sample_expansion_mcmc <- function(graph, num) {
   return(induced.subgraph(graph, max_nodes))
 }
 
-vac <- rev(order(page.rank(er)$vector))[1:10]
+graph <- graph.fb
+
+simulate(graph, iter=15, p_i=0.01, p_h=0.9)
+
+vac <- rev(order(page.rank(graph)$vector))[1:100]
+
+simulate(graph, vac=vac, iter=15, p_i=0.01, p_h=0.9)
