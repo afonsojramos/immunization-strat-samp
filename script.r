@@ -1,27 +1,10 @@
-#### Install ####
-requiredPackages <-
-  c("igraph",
-    "rstudioapi")
+setwd("C:\\Users\\Lukas\\OneDrive\\Uni\\Master\\3_HWS19\\Complex and Social Networks\\Project")
 
-for (pac in requiredPackages) {
-  if (!require(pac,  character.only = TRUE)) {
-    install.packages(pac, repos = "http://cran.rstudio.com")
-    library(pac,  character.only = TRUE)
-  }
-}
+library("igraph")
 
-rm(pac)
-rm(requiredPackages)
-
-# set pwd to current directory, must load rstudioapi before.
-if(rstudioapi::isAvailable()) {
-  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-}
-
-graph.fb <- read.graph("data/facebook_combined.txt")
-graph.tw <- read.graph("data/twitter_combined.txt", format = "ncol", directed = TRUE)
-graph.tw <- simplify(graph.tw)
-graph.ep <- read.graph("data/soc-Epinions1.txt", directed = TRUE)
+graph.fb <- read.graph("C:\\Users\\Lukas\\Desktop\\facebook_combined.txt", directed = FALSE)
+graph.tw <- read.graph("C:\\Users\\Lukas\\Desktop\\twitter_combined.txt", format = "ncol", directed = TRUE)
+graph.ep <- read.graph("C:\\Users\\Lukas\\Desktop\\soc-Epinions1.txt", directed = TRUE)
 
 n <- 10000
 ba <- barabasi.game(n, 1, directed=FALSE)
@@ -74,14 +57,14 @@ simulate <- function(graph, vac=integer(0), iter=20, inf=0.001, p_i=0.005, p_h=0
   return(res)
 }
 
-sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE) {
+sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE, mode = "OUT") {
   sampled <- make_empty_graph(directed = FALSE)
   v <- sample(as.numeric(V(graph)), 1)
   v.id <- 1
   v_na <- NA
   sampled <- add_vertices(sampled, 1, name=v)
   for (iter in seq(num)){
-    neighbours <- as.numeric(neighbors(graph, v, mode = "OUT"))
+    neighbours <- as.numeric(neighbors(graph, v, mode = mode))
     if (metropolis_hastings) {
       repeat {
         v_n <- sample(neighbours, 1)
@@ -106,11 +89,11 @@ sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE) {
   return(sampled)
 }
 
-sample_random_walk_nodes <- function(graph, num, metropolis_hastings = FALSE) {
+sample_random_walk_nodes <- function(graph, num, metropolis_hastings = FALSE, mode = "OUT") {
   v <- sample(as.numeric(V(graph)), 1)
   nodes <- v
   for (iter in seq(num)){
-    neighbours <- as.numeric(neighbors(graph, v, mode = "OUT"))
+    neighbours <- as.numeric(neighbors(graph, v, mode = mode))
     if (metropolis_hastings) {
       repeat {
         v_n <- sample(neighbours, 1)
@@ -175,9 +158,31 @@ sample_expansion_mcmc <- function(graph, num) {
 }
 
 graph <- graph.fb
-
 simulate(graph, iter=15, p_i=0.01, p_h=0.9)
-
 vac <- rev(order(page.rank(graph)$vector))[1:100]
-
 simulate(graph, vac=vac, iter=15, p_i=0.01, p_h=0.9)
+
+
+simulate(graph.tw, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+vac <- rev(order(page.rank(graph.tw)$vector))[1:500]
+simulate(graph.tw, vac=vac, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+sample_mcmc <- sample_expansion_mcmc(graph.tw, 2000)
+vac2 <- rev(order(page.rank(sample_mcmc)$vector))[1:500]
+simulate(graph.tw, vac=vac2, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+vac_base <- sample(1:gorder(graph.tw), 500)
+simulate(graph.tw, vac=vac_base, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+sample_random_node <- sample_random_walk_nodes(graph.tw, 2000, mode="ALL")
+vac3 <- rev(order(page.rank(sample_random_node)$vector))[1:500]
+simulate(graph.tw, vac=vac3, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+sample_random_edge <- sample_random_walk_edges(graph.tw, 5000, mode="ALL")
+vac4 <- rev(order(page.rank(sample_random_node)$vector))[1:500]
+simulate(graph.tw, vac=vac4, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+l -> c()
+for (i in 0:15) {
+  l <- append(l, mean(list[seq(1, 160, by=16)]+i))
+}
