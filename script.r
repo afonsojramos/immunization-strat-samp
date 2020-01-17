@@ -1,11 +1,27 @@
-setwd("C:\\Users\\Lukas\\OneDrive\\Uni\\Master\\3_HWS19\\Complex and Social Networks\\Project")
+#### Install ####
+requiredPackages <-
+  c("igraph",
+    "rstudioapi")
 
-library("igraph")
+for (pac in requiredPackages) {
+  if (!require(pac,  character.only = TRUE)) {
+    install.packages(pac, repos = "http://cran.rstudio.com")
+    library(pac,  character.only = TRUE)
+  }
+}
 
-graph.fb <- read.graph("C:\\Users\\Lukas\\Desktop\\facebook_combined.txt", directed = FALSE)
-graph.tw <- read.graph("C:\\Users\\Lukas\\Desktop\\twitter_combined.txt", format = "ncol", directed = TRUE)
+rm(pac)
+rm(requiredPackages)
+
+# set pwd to current directory, must load rstudioapi before.
+if(rstudioapi::isAvailable()) {
+  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+}
+
+graph.fb <- read.graph("data/facebook_combined.txt")
+graph.tw <- read.graph("data/twitter_combined.txt", format = "ncol", directed = TRUE)
 graph.tw <- simplify(graph.tw)
-graph.ep <- read.graph("C:\\Users\\Lukas\\Desktop\\soc-Epinions1.txt", directed = TRUE)
+graph.ep <- read.graph("data/soc-Epinions1.txt", directed = TRUE)
 
 n <- 10000
 ba <- barabasi.game(n, 1, directed=FALSE)
