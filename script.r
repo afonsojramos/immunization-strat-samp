@@ -43,7 +43,7 @@ simulate <- function(graph, vac=integer(0), iter=10, inf=0.01, p_i=0.05, p_h=0.5
     healed <- infected[sample(c(TRUE, FALSE), length(infected), prob = c(p_h, 1-p_h), replace = TRUE)]
     neighbours <- c()
     for (v in infected) {
-      nei <- as_ids(neighbors(graph, v))
+      nei <- as_ids(neighbors(graph, v, mode = "OUT"))
       nei <- setdiff(nei, append(infected, vac))
       neighbours <- append(neighbours, nei)
     }
@@ -55,13 +55,24 @@ simulate <- function(graph, vac=integer(0), iter=10, inf=0.01, p_i=0.05, p_h=0.5
   return(history)
 }
 
-sample_random_walk <- function(graph, num) {
+sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE) {
   sampled <- make_empty_graph(directed = FALSE)
   v <- sample(as_ids(V(graph)), 1)
   v.id <- 1
+  v_na <- NA
   sampled <- add_vertices(sampled, 1, name=v)
   for (iter in seq(num)){
-    v_n <- sample(as_ids(neighbors(graph, v)), 1)
+    neighbours <- as_ids(neighbors(graph, v, mode = "OUT"))
+    if (metropolis_hastings) {
+      repeat {
+        v_n <- sample(neighbours, 1)
+        if (runif(1) < min(1, degree(graph, v)/degree(graph, v_n))) {
+          break
+        }
+      }
+    } else {
+      v_n <- sample(neighbours, 1)
+    }
     v_n.id <- match(v_n, as_ids(V(sampled)))
     if (is.na(v_n.id)) {
       sampled <- add_vertices(sampled, 1, name=v_n)
@@ -76,36 +87,63 @@ sample_random_walk <- function(graph, num) {
   return(sampled)
 }
 
-sample_metropolis_hastings <- function(graph, num) {
-  sampled <- make_empty_graph(directed = FALSE)
+sample_random_walk_nodes <- function(graph, num, metropolis_hastings = FALSE) {
   v <- sample(as_ids(V(graph)), 1)
-  v.id <- 1
-  v_n <- NA
-  sampled <- add_vertices(sampled, 1, name=v)
+  nodes <- v
   for (iter in seq(num)){
-    neighbours <- as_ids(neighbors(graph, v))
-    repeat {
-      v_n <- sample(neighbours, 1)
-      if (runif(1) < min(1, degree(graph, v)/degree(graph, v_n))) {
-        break
+    neighbours <- as_ids(neighbors(graph, v, mode = "OUT"))
+    if (metropolis_hastings) {
+      repeat {
+        v_n <- sample(neighbours, 1)
+        if (runif(1) < min(1, degree(graph, v)/degree(graph, v_n))) {
+          v <- v_n
+          break
+        }
+      }
+    } else {
+      v <- sample(neighbours, 1)
+    }
+    nodes <- append(nodes, v)
+  }
+  return(induced.subgraph(graph, nodes))
+}
+
+sample_expansion_snowball <- function(graph, num) {
+  nodes <- sample(as_ids(V(graph)), 1)
+  neighbours <- as_ids(neighbors(graph, nodes, mode = "OUT"))
+  for (iter in seq(num)){
+    max_n <- NA
+    max_nei <- c()
+    for (n in sample(neighbours)) {
+      new_neighbourhood <- setdiff(append(as_ids(neighbors(graph, n, mode = "OUT")), neighbours), append(nodes, n))
+      if (length(new_neighbourhood) > length(max_nei)) {
+        max_n <- n
+        max_nei <- new_neighbourhood
       }
     }
-    v_n.id <- match(v_n, as_ids(V(sampled)))
-    if (is.na(v_n.id)) {
-      sampled <- add_vertices(sampled, 1, name=v_n)
-      v_n.id <- gorder(sampled)
-    }
-    if(!are.connected(sampled, v.id, v_n.id)) {
-      sampled <- add_edges(sampled, c(v.id, v_n.id))
-    }
-    v <- v_n
-    v.id <- v_n.id
+    nodes <- append(nodes, max_n)
+    neighbours <- max_nei
   }
-  return(sampled)
+  return(induced.subgraph(graph, nodes))
 }
 
-sample_expansion <- function(graph, num) {
-  
+sample_expansion_mcmc <- function(graph, num) {
+  nodes <- sample(as_ids(V(graph)), 1)
+  neighbours <- as_ids(neighbors(graph, nodes, mode = "OUT"))
+  for (iter in seq(num)){
+    max_n <- NA
+    max_nei <- c()
+    for (n in sample(neighbours)) {
+      new_neighbourhood <- setdiff(append(as_ids(neighbors(graph, n, mode = "OUT")), neighbours), append(nodes, n))
+      if (length(new_neighbourhood) > length(max_nei)) {
+        max_n <- n
+        max_nei <- new_neighbourhood
+      }
+    }
+    nodes <- append(nodes, max_n)
+    neighbours <- max_nei
+  }
+  return(induced.subgraph(graph, nodes))
 }
-  
+
 vac <- rev(order(page.rank(er)$vector))[1:10]
