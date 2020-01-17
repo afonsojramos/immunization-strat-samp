@@ -2,7 +2,10 @@ setwd("C:\\Users\\Lukas\\OneDrive\\Uni\\Master\\3_HWS19\\Complex and Social Netw
 
 library("igraph")
 
-#graph <- read.graph("Simple_pairwise-London_tube_map.txt", format = "ncol", directed = FALSE)
+graph.fb <- read.graph("C:\\Users\\Lukas\\Desktop\\facebook_combined.txt")
+graph.tw <- read.graph("C:\\Users\\Lukas\\Desktop\\twitter_combined.txt", format = "ncol", directed = TRUE)
+graph.tw <- simplify(graph.tw)
+graph.ep <- read.graph("C:\\Users\\Lukas\\Desktop\\soc-Epinions1.txt", directed = TRUE)
 
 n <- 100
 ba <- barabasi.game(n, 1, directed=FALSE)
@@ -43,11 +46,11 @@ simulate <- function(graph, vac=integer(0), iter=10, inf=0.01, p_i=0.05, p_h=0.5
     healed <- infected[sample(c(TRUE, FALSE), length(infected), prob = c(p_h, 1-p_h), replace = TRUE)]
     neighbours <- c()
     for (v in infected) {
-      nei <- as_ids(neighbors(graph, v, mode = "OUT"))
+      nei <- as.numeric(neighbors(graph, v, mode = "OUT"))
       nei <- setdiff(nei, append(infected, vac))
       neighbours <- append(neighbours, nei)
     }
-    new_infected <- unique(neighbours[sample(c(TRUE, FALSE), length(neighbours), prob = c(p_i, 1-p_i), replace = TRUE)])
+    new_infected <- unique(as.numeric(neighbours[sample(c(TRUE, FALSE), length(neighbours), prob = c(p_i, 1-p_i), replace = TRUE)]))
     infected <- append(infected[-healed], new_infected)
     history[[length(history)+1]] <- infected
     res <- append(res, c(length(infected)))
@@ -57,12 +60,12 @@ simulate <- function(graph, vac=integer(0), iter=10, inf=0.01, p_i=0.05, p_h=0.5
 
 sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE) {
   sampled <- make_empty_graph(directed = FALSE)
-  v <- sample(as_ids(V(graph)), 1)
+  v <- sample(as.numeric(V(graph)), 1)
   v.id <- 1
   v_na <- NA
   sampled <- add_vertices(sampled, 1, name=v)
   for (iter in seq(num)){
-    neighbours <- as_ids(neighbors(graph, v, mode = "OUT"))
+    neighbours <- as.numeric(neighbors(graph, v, mode = "OUT"))
     if (metropolis_hastings) {
       repeat {
         v_n <- sample(neighbours, 1)
@@ -73,7 +76,7 @@ sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE) {
     } else {
       v_n <- sample(neighbours, 1)
     }
-    v_n.id <- match(v_n, as_ids(V(sampled)))
+    v_n.id <- match(v_n, as.numeric(V(sampled)))
     if (is.na(v_n.id)) {
       sampled <- add_vertices(sampled, 1, name=v_n)
       v_n.id <- gorder(sampled)
@@ -88,10 +91,10 @@ sample_random_walk_edges <- function(graph, num, metropolis_hastings = FALSE) {
 }
 
 sample_random_walk_nodes <- function(graph, num, metropolis_hastings = FALSE) {
-  v <- sample(as_ids(V(graph)), 1)
+  v <- sample(as.numeric(V(graph)), 1)
   nodes <- v
   for (iter in seq(num)){
-    neighbours <- as_ids(neighbors(graph, v, mode = "OUT"))
+    neighbours <- as.numeric(neighbors(graph, v, mode = "OUT"))
     if (metropolis_hastings) {
       repeat {
         v_n <- sample(neighbours, 1)
@@ -109,13 +112,13 @@ sample_random_walk_nodes <- function(graph, num, metropolis_hastings = FALSE) {
 }
 
 sample_expansion_snowball <- function(graph, num) {
-  nodes <- sample(as_ids(V(graph)), 1)
-  neighbours <- as_ids(neighbors(graph, nodes, mode = "OUT"))
+  nodes <- sample(as.numeric(V(graph)), 1)
+  neighbours <- as.numeric(neighbors(graph, nodes, mode = "OUT"))
   for (iter in seq(num)){
     max_n <- NA
     max_nei <- c()
     for (n in sample(neighbours)) {
-      new_neighbourhood <- setdiff(append(as_ids(neighbors(graph, n, mode = "OUT")), neighbours), append(nodes, n))
+      new_neighbourhood <- setdiff(append(as.numeric(neighbors(graph, n, mode = "OUT")), neighbours), append(nodes, n))
       if (length(new_neighbourhood) > length(max_nei)) {
         max_n <- n
         max_nei <- new_neighbourhood
@@ -128,22 +131,31 @@ sample_expansion_snowball <- function(graph, num) {
 }
 
 sample_expansion_mcmc <- function(graph, num) {
-  nodes <- sample(as_ids(V(graph)), 1)
-  neighbours <- as_ids(neighbors(graph, nodes, mode = "OUT"))
+  n <- gorder(graph)
+  p <- 10 * gsize(graph) / n * log10(n)
+  nodes <- sample(as.numeric(V(graph)), 1)
+  neighbours <- as.numeric(neighbors(graph, nodes, mode = "OUT"))
+  max_nodes <- NA
+  max_exp <- 0
+  exp <- length(neighbours) / (n - length(nodes))
   for (iter in seq(num)){
-    max_n <- NA
-    max_nei <- c()
-    for (n in sample(neighbours)) {
-      new_neighbourhood <- setdiff(append(as_ids(neighbors(graph, n, mode = "OUT")), neighbours), append(nodes, n))
-      if (length(new_neighbourhood) > length(max_nei)) {
-        max_n <- n
-        max_nei <- new_neighbourhood
+    repeat {
+      v <- sample(setdiff(1:n, nodes), 1)
+      new_nodes <- append(nodes, v)
+      neighbours <- unique(setdiff(append(neighbours, as.numeric(neighbors(graph, v))), nodes))
+      exp_new <- length(neighbours) / (n - length(nodes))
+      if (runif(1) < min(1, exp_new / exp) ** p) {
+        nodes <- new_nodes
+        exp <- exp_new
+        if (exp > max_exp) {
+          max_nodes <- nodes
+          max_exp <- exp
+        }
+        break
       }
     }
-    nodes <- append(nodes, max_n)
-    neighbours <- max_nei
   }
-  return(induced.subgraph(graph, nodes))
+  return(induced.subgraph(graph, max_nodes))
 }
 
 vac <- rev(order(page.rank(er)$vector))[1:10]
