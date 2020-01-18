@@ -1,10 +1,26 @@
-setwd("C:\\Users\\Lukas\\OneDrive\\Uni\\Master\\3_HWS19\\Complex and Social Networks\\Project")
+#### Install ####
+requiredPackages <-
+  c("igraph",
+    "rstudioapi")
 
-library("igraph")
+for (pac in requiredPackages) {
+  if (!require(pac,  character.only = TRUE)) {
+    install.packages(pac, repos = "http://cran.rstudio.com")
+    library(pac,  character.only = TRUE)
+  }
+}
 
-graph.fb <- read.graph("C:\\Users\\Lukas\\Desktop\\facebook_combined.txt", directed = FALSE)
-graph.tw <- read.graph("C:\\Users\\Lukas\\Desktop\\twitter_combined.txt", format = "ncol", directed = TRUE)
-graph.ep <- read.graph("C:\\Users\\Lukas\\Desktop\\soc-Epinions1.txt", directed = TRUE)
+rm(pac)
+rm(requiredPackages)
+
+# set pwd to current directory, must load rstudioapi before.
+if(rstudioapi::isAvailable()) {
+  setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+}
+
+graph.fb <- read.graph("data/facebook_combined.txt", directed = FALSE)
+graph.tw <- read.graph("data/twitter_combined.txt", format = "ncol", directed = TRUE)
+graph.ep <- read.graph("data/soc-Epinions1.txt", directed = TRUE)
 
 n <- 10000
 ba <- barabasi.game(n, 1, directed=FALSE)
@@ -157,32 +173,57 @@ sample_expansion_mcmc <- function(graph, num) {
   return(induced.subgraph(graph, max_nodes))
 }
 
+
 graph <- graph.fb
 simulate(graph, iter=15, p_i=0.01, p_h=0.9)
 vac <- rev(order(page.rank(graph)$vector))[1:100]
 simulate(graph, vac=vac, iter=15, p_i=0.01, p_h=0.9)
 
 
+# Twitter
 simulate(graph.tw, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
-vac <- rev(order(page.rank(graph.tw)$vector))[1:500]
-simulate(graph.tw, vac=vac, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+# 5 Vaccination Selection
+
+vac_base1 <- rev(order(page.rank(graph.tw)$vector))[1:500]
+sim_vac_base1 <- simulate(graph.tw, vac=vac_base1, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+
+vac_base2 <- sample(1:gorder(graph.tw), 500)
+sim_vac_base2 <- simulate(graph.tw, vac=vac_base2, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+vac_base3 <- rev(order(degree(graph.tw)))[1:500]
+sim_vac_base3 <- simulate(graph.tw, vac=vac_base3, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+vac_base4 <- rev(order(betweenness(graph.tw)$vector))[1:500]
+sim_vac_base4 <- simulate(graph.tw, vac=vac_base4, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+vac_base5 <- rev(order(eigen_centrality(graph.tw)$vector))[1:500]
+sim_vac_base5 <- simulate(graph.tw, vac=vac_base5, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+
+
+# 4 Samples
 
 sample_mcmc <- sample_expansion_mcmc(graph.tw, 2000)
-vac2 <- rev(order(page.rank(sample_mcmc)$vector))[1:500]
-simulate(graph.tw, vac=vac2, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+vac1 <- rev(order(page.rank(sample_mcmc)$vector))[1:500]
+simulate(graph.tw, vac=vac1, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
 
-vac_base <- sample(1:gorder(graph.tw), 500)
-simulate(graph.tw, vac=vac_base, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
+sample_snowball <- sample_expansion_mcmc(graph.tw, 2000)
+vac2 <- rev(order(page.rank(sample_snowball)$vector))[1:500]
+simulate(graph.tw, vac=vac2, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
 
 sample_random_node <- sample_random_walk_nodes(graph.tw, 2000, mode="ALL")
 vac3 <- rev(order(page.rank(sample_random_node)$vector))[1:500]
 simulate(graph.tw, vac=vac3, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
 
 sample_random_edge <- sample_random_walk_edges(graph.tw, 5000, mode="ALL")
-vac4 <- rev(order(page.rank(sample_random_node)$vector))[1:500]
+vac4 <- rev(order(page.rank(sample_random_edge)$vector))[1:500]
 simulate(graph.tw, vac=vac4, iter=10, inf=0.001, p_i=0.005, p_h=0.3)
 
-l -> c()
-for (i in 0:15) {
-  l <- append(l, mean(list[seq(1, 160, by=16)]+i))
+for (i in 0:15) {  
+  inf <- append(inf, mean(vaccinated[seq(1,160,by=16)+i]))
+  v <- append(v, mean(infected[seq(1,160,by=16)+i]))
 }
+
+plot(inf, main = "Immunization ")
+points(v, pch=15)
